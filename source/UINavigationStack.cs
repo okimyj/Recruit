@@ -74,7 +74,7 @@ public class UINavigationStack : AbstractSingleton<UINavigationStack>
 			}
 		}		
 	}
-	void LateUpdate()
+	private void LateUpdate()
 	{
 		// 뒤로가기 버튼이 눌렸을 때.
 		if (Input.GetKeyUp(KeyCode.Escape))

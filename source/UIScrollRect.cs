@@ -23,26 +23,10 @@ public class UIScrollRect : ScrollRect
 	int totalCellNum = 0;
 	int curStartIndex = -1;
 	int curEndIndex = -1;
-	protected override void Awake()
+	public void AddCells(List<object> cells)
 	{
-		base.Awake();
-		Init();
-	}
-	void Init()
-	{
-		if (init || !Application.isPlaying)
-			return;
-		
-		RecalcPoolNum();
-		
-		init = true;
-		content.sizeDelta = CalcContentsSize();
+		cellDatas = new List<object>(cells);
 		SetTotalCellNum();
-
-	}
-	public void SetCellTouchedCallback(CallbackButton callback)
-	{
-		cellTouchedCallback = callback;
 	}
 	public void SetTotalCellNum(int totalCell = -1, bool isRefresh = true)
 	{
@@ -73,7 +57,55 @@ public class UIScrollRect : ScrollRect
 		bool canScroll = vertical ? content.sizeDelta.y >= scrollViewSize.y : content.sizeDelta.x >= scrollViewSize.x;
 		SetScrollBlock(!canScroll);
 	}
-	void PushIntoPool(UIScrollCellBase usedCell)
+	public void SetCellTouchedCallback(CallbackButton callback)
+	{
+		cellTouchedCallback = callback;
+	}
+	public void SetScrollBlock(bool block)
+	{
+		scrollBlock = block;
+	}
+
+	public override void OnBeginDrag(UnityEngine.EventSystems.PointerEventData eventData)
+	{
+		if (scrollBlock)
+			return;
+		eventData.position = eventData.pressPosition;
+		base.OnBeginDrag(eventData);
+
+	}
+	public override void OnDrag(UnityEngine.EventSystems.PointerEventData eventData)
+	{
+		if (scrollBlock)
+			return;
+		base.OnDrag(eventData);
+
+		float xGap = Mathf.Abs(eventData.pressPosition.x - eventData.position.x);
+		float yGap = Mathf.Abs(eventData.pressPosition.y - eventData.position.y);
+		bool ok = vertical ? xGap < acceptScrollRange && yGap > acceptScrollRange : xGap > acceptScrollRange && yGap < acceptScrollRange;
+	}
+	public override void OnEndDrag(UnityEngine.EventSystems.PointerEventData eventData)
+	{
+		if (scrollBlock)
+			return;
+		base.OnEndDrag(eventData);
+	}
+	
+	
+	private void Init()
+	{
+		if (init || !Application.isPlaying)
+			return;
+		
+		RecalcPoolNum();
+		
+		init = true;
+		content.sizeDelta = CalcContentsSize();
+		SetTotalCellNum();
+	}
+	
+	
+	private void PushIntoPool(UIScrollCellBase usedCell)
 	{
 		if (usedCell != null)
 		{
@@ -83,7 +115,7 @@ public class UIScrollRect : ScrollRect
 			usedCell.Reset();
 		}
 	}
-	UIScrollCellBase PopFromPool()
+	private UIScrollCellBase PopFromPool()
 	{
 		if (null != cellPool && cellPool.Count > 0)
 		{
@@ -123,7 +155,7 @@ public class UIScrollRect : ScrollRect
 		InitOneCell(cellComp);
 		return cellComp;
 	}
-	void InitOneCell(UIScrollCellBase cellComp)
+	private void InitOneCell(UIScrollCellBase cellComp)
 	{
 		if (cellComp.gameObject.activeSelf)
 			SetCellActive(cellComp.transform, false);
@@ -134,18 +166,18 @@ public class UIScrollRect : ScrollRect
 		}
 		createdCells.Add(cellComp);
 	}
-	public void TouchCell(UIScalingButton button)
+	private void TouchCell(UIScalingButton button)
 	{
 		if (null != cellTouchedCallback)
 			cellTouchedCallback(button);
 	}
-	void SetCellActive(Transform target, bool active)
+	private void SetCellActive(Transform target, bool active)
 	{
 		Vector3 changeScale = active ? Vector3.one : Vector3.zero;
 		if (target.localScale != changeScale)
 			target.localScale = changeScale;
 	}
-	void RecalcPoolNum()
+	private void RecalcPoolNum()
 	{
 		int poolNum = GetPoolSize();
 		if (null != cellPool && cellPool.Count >= poolNum)
@@ -175,7 +207,7 @@ public class UIScrollRect : ScrollRect
 	{
 		return cellSize.y + cellSpacing.y;
 	}
-	public int GetPoolSize()
+	private int GetPoolSize()
 	{
 		scrollViewSize = GetComponent<RectTransform>().sizeDelta;
 		float viewSize = vertical ? scrollViewSize.y - cellStartPos.y : scrollViewSize.x - cellStartPos.x;
@@ -184,35 +216,13 @@ public class UIScrollRect : ScrollRect
 		return poolNum;
 	}
 		
-	public override void OnBeginDrag(UnityEngine.EventSystems.PointerEventData eventData)
-	{
-		if (scrollBlock)
-			return;
-		eventData.position = eventData.pressPosition;
-		base.OnBeginDrag(eventData);
-		
-	}
-	public override void OnDrag(UnityEngine.EventSystems.PointerEventData eventData)
-	{
-		if (scrollBlock)
-			return;
-		base.OnDrag(eventData);
-
-		float xGap = Mathf.Abs(eventData.pressPosition.x - eventData.position.x);
-		float yGap = Mathf.Abs(eventData.pressPosition.y - eventData.position.y);
-		bool ok = vertical ? xGap < acceptScrollRange && yGap > acceptScrollRange : xGap > acceptScrollRange && yGap < acceptScrollRange;
-	}
-	public override void OnEndDrag(UnityEngine.EventSystems.PointerEventData eventData)
-	{
-		if (scrollBlock)
-			return;
-		base.OnEndDrag(eventData);
-	}
-	void CheckScrollPosition()
+	
+	
+	private void CheckScrollPosition()
 	{
 		int startIndex = -1;
 		int endIndex = -1;
-		
+
 		if (vertical)
 		{
 			float y = content.localPosition.y < 0 ? 0 : content.localPosition.y;
@@ -223,11 +233,10 @@ public class UIScrollRect : ScrollRect
 			float x = content.localPosition.x > 0 ? 0 : Mathf.Abs(content.localPosition.x);
 			startIndex = Mathf.FloorToInt(x / GetCellWidth());
 		}
-		
 		startIndex = Mathf.Max(0, startIndex);
 		if (endIndex == -1)
 			endIndex = Mathf.Min(startIndex + showCellNum, totalCellNum - 1);
-		
+
 		if (curStartIndex == startIndex && curEndIndex == endIndex)
 			return;
 		else if (curStartIndex > endIndex || curEndIndex < startIndex)
@@ -248,16 +257,8 @@ public class UIScrollRect : ScrollRect
 		curStartIndex = startIndex;
 		curEndIndex = endIndex;
 	}
-	protected override void LateUpdate()
-	{
-		if (!(scrollBlock))
-			base.LateUpdate();
-		if (Application.isPlaying)
-		{
-			CheckScrollPosition();
-		}
-	}
-	void ClearCellDataRange(int startRank, int endRank)
+
+	private void ClearCellDataRange(int startRank, int endRank)
 	{
 		if (null == shownCells || startRank < 0 || endRank < 0)
 			return;
@@ -271,7 +272,7 @@ public class UIScrollRect : ScrollRect
 		}
 	}
 
-	void FillCellData(int startRank, int endRank)
+	private void FillCellData(int startRank, int endRank)
 	{
 		for (int i = startRank; i <= endRank; i++)
 		{
@@ -291,20 +292,29 @@ public class UIScrollRect : ScrollRect
 			}
 		}
 	}
-	public virtual void SetOneCellData(int index, UIScrollCellBase cell)
+
+	private void SetOneCellData(int index, UIScrollCellBase cell)
 	{
 		if (null != cellDatas && cellDatas.Count > index)
 			cell.SetCellData(cellDatas[index]);
 		else
 			cell.SetCellData(null);
 	}
-	private void SetScrollBlock(bool block)
+	
+	protected override void Awake()
 	{
-		scrollBlock = block;
+		base.Awake();
+		Init();
 	}
-	public void AddCells(List<object> cells)
+
+	protected override void LateUpdate()
 	{
-		cellDatas = new List<object>(cells);
-		SetTotalCellNum();
+		if (!(scrollBlock))
+			base.LateUpdate();
+		if (Application.isPlaying)
+		{
+			CheckScrollPosition();
+		}
 	}
+
 }
